@@ -1,0 +1,94 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 import requests\
+from bs4 import BeautifulSoup\
+\
+def extrair_pl_statusinvest(ticker):\
+    """\
+    Tenta extrair o P/L de uma a\'e7\'e3o no Status Invest usando Web Scraping.\
+    \
+    Aviso: Este m\'e9todo \'e9 sens\'edvel a mudan\'e7as no layout do site\
+    e pode parar de funcionar se o Status Invest alterar suas classes CSS.\
+    """\
+    \
+    # 1. Montar a URL\
+    url = f"https://statusinvest.com.br/acoes/\{ticker.lower()\}"\
+    \
+    # 2. Configurar o Header (necess\'e1rio para simular um navegador real)\
+    headers = \{\
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'\
+    \}\
+    \
+    try:\
+        # 3. Fazer a requisi\'e7\'e3o HTTP\
+        print(f"Buscando dados em: \{url\}")\
+        response = requests.get(url, headers=headers, timeout=10)\
+        response.raise_for_status() # Lan\'e7a erro se a requisi\'e7\'e3o falhar (4xx ou 5xx)\
+        \
+        # 4. Criar o objeto BeautifulSoup para an\'e1lise do HTML\
+        soup = BeautifulSoup(response.text, 'html.parser')\
+        \
+        # 5. Encontrar o P/L (Esta \'e9 a parte crucial e vol\'e1til)\
+        # O P/L geralmente est\'e1 no quarto quadro de indicadores principais.\
+        # Vamos tentar localizar a div que cont\'e9m o P/L pelo texto "P/L" (Pre\'e7o/Lucro).\
+        \
+        # Encontra a \'e2ncora que cont\'e9m o texto "P/L"\
+        # O Status Invest usa a classe "title" para o nome do indicador.\
+        title_pl = soup.find('div', class_='title', string='P/L')\
+        \
+        if title_pl:\
+            # O valor ('indicator-value') est\'e1 um n\'edvel acima (parent) e depois \
+            # na div 'indicator-value' (sibling).\
+            # A estrutura \'e9 geralmente: <div class="w-100"> -> <div class="indicator-value"> (valor)\
+            \
+            # Subimos um n\'edvel (para o bloco de indicador)\
+            indicator_block = title_pl.parent \
+            \
+            # Dentro do bloco, encontramos a div que guarda o valor\
+            value_div = indicator_block.find('strong', class_='indicator-value')\
+            \
+            if value_div:\
+                pl_valor = value_div.text.strip().replace(',', '.')\
+                \
+                # 6. An\'e1lise de Valor (Reutilizando sua regra)\
+                try:\
+                    pl_num = float(pl_valor)\
+                    if pl_num < 10:\
+                        analise = "Barata"\
+                    elif 10 <= pl_num <= 20:\
+                        analise = "Justa"\
+                    else:\
+                        analise = "Cara"\
+                        \
+                    return pl_valor, analise\
+                \
+                except ValueError:\
+                    return pl_valor, "N/D (N\'e3o Num\'e9rico)"\
+\
+        return "N/D", "Indicador n\'e3o encontrado no HTML"\
+\
+    except requests.exceptions.HTTPError as errh:\
+        return None, f"Erro HTTP: \{errh\}"\
+    except requests.exceptions.ConnectionError as errc:\
+        return None, f"Erro de Conex\'e3o: \{errc\}"\
+    except requests.exceptions.Timeout as errt:\
+        return None, f"Timeout: \{errt\}"\
+    except requests.exceptions.RequestException as err:\
+        return None, f"Erro na requisi\'e7\'e3o: \{err\}"\
+    except Exception as e:\
+        return None, f"Erro inesperado no scraping: \{e\}"\
+\
+# --- Teste com RANI3 ---\
+ticker_alvo = "RANI3"\
+valor_pl, analise_pl = extrair_pl_statusinvest(ticker_alvo)\
+\
+print("-" * 40)\
+print(f"\uc0\u55357 \u56522  Relat\'f3rio de Web Scraping para \{ticker_alvo.upper()\}")\
+print(f"   -> P/L Encontrado: \{valor_pl\}")\
+print(f"   -> An\'e1lise de Valor: **\{analise_pl\}**")\
+print("-" * 40)}
