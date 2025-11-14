@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Análise de Ações | RELATÓRIO</title>
+    <title>Sistema de Análise de Ações | RELATÓRIO PROFISSIONAL</title>
     <style>
         /* CSS para Estilização (DARK MODE PROFISSIONAL) */
         :root {
@@ -14,7 +14,6 @@
             --secondary-color: #1abc9c; /* Verde Menta (Título) */
             --border-color: #444444; /* Borda Escura */
             --table-header-bg: #3c3c3c; /* Fundo do Cabeçalho da Tabela */
-            --table-row-bg: #2d2d30; /* Fundo da Linha da Tabela */
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -128,7 +127,7 @@
         .cara { color: #e74c3c; font-weight: bold; } /* Vermelho - Venda */
         .moderado { color: #7f8c8d; font-weight: bold; }
         .alto { color: #1abc9c; font-weight: bold; }
-        .cotacao, .indefinida { color: var(--text-color); }
+        .cotacao, .nd, .indefinida { color: var(--text-color); }
     </style>
 </head>
 <body>
@@ -162,27 +161,26 @@
     </div>
 
     <script>
-        // ⚠️ Seu Token
-        const API_TOKEN = 'x6NYckniQmXHAC5b4prLET'; 
-        const BASE_URL = 'https://brapi.dev/api/quote/';
+        // Fonte de dados aberta (Yahoo Finance) via Proxy CORS
+        const YAHOO_FINANCE_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=';
+        const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
 
-        // Dados Mockados para fundamentos não fornecidos 
+        // Mapeamento de indicadores CRUCIAIS que não estão disponíveis em fontes gratuitas/abertas (MOCK com aviso)
         const MOCK_DATA = {
-            PEG: { nome: 'PEG Ratio (Mock)', valor: '0.85', analise: 'Barata', descricao: 'Relação entre PL e o Crescimento. Abaixo de 1 indica preço atrativo.' },
-            ROE: { nome: 'ROE (Mock)', valor: '25.3%', analise: 'Alto', descricao: 'Retorno sobre o Patrimônio Líquido. Capacidade de gerar lucro. Acima de 15% é bom.' }
+            PEG: { nome: 'PEG Ratio (Mock)', valor: '0.85', analise: 'Barata', descricao: 'Relação entre PL e o Crescimento. ABAIXO DE 1 É IDEAL.' },
+            ROE: { nome: 'ROE (Mock)', valor: '25.3%', analise: 'Alto', descricao: 'Retorno sobre o Patrimônio Líquido. Acima de 15% é considerado excelente.' }
         };
 
-        // Função auxiliar para determinar a análise de valor do PL (Simulado, usando regra de mercado)
+        // Função auxiliar para determinar a análise de valor do PL (usando regra de 10-20 do vídeo)
         function analisarPL(pl) {
-            if (pl === null || isNaN(pl)) return { classe: 'indefinida', texto: 'N/D' };
-            // Usando simulação para manter a regra de 10-20 do vídeo
+            if (pl === null || isNaN(pl) || pl === undefined) return { classe: 'nd', texto: 'N/D' };
             if (pl < 10) return { classe: 'barata', texto: 'Barata' }; 
             if (pl >= 10 && pl <= 20) return { classe: 'justa', texto: 'Justa' };
             return { classe: 'cara', texto: 'Cara' };
         }
         
         function formatarClasse(texto) {
-            return texto.toLowerCase().replace(/[\s\/]/g, '');
+            return texto.toLowerCase().replace(/[\s\/\(\)]/g, '').replace('í', 'i');
         }
 
         // Função principal chamada pelo botão
@@ -192,58 +190,54 @@
             const tecnicaChecked = document.getElementById('analiseTecnica').checked;
 
             if (!ticker) {
-                alert('Por favor, digite o Ticker da Ação (Ex: PETR4, RANI3).');
+                alert('Por favor, digite o Ticker da Ação (Ex: PETR4, BBDC4).');
                 return;
             }
 
-            relatorioDiv.innerHTML = `<p>Buscando dados para **${ticker}**. Aguarde...</p>`;
+            relatorioDiv.innerHTML = `<p>Buscando dados **REAIS** (Preço e P/L) para **${ticker}**. Aguarde...</p>`;
 
             try {
-                // 1. CHAMA A API BRAPI (Simplificado para evitar erros de módulos no plano gratuito)
-                const url = `${BASE_URL}${ticker}?token=${API_TOKEN}`;
+                // 1. CONSTRUÇÃO DA URL COM SUFIXO BRASILEIRO E PROXY
+                const symbol = `${ticker}.SA`;
+                const url = `${CORS_PROXY}${YAHOO_FINANCE_URL}${symbol}`;
+                
                 const response = await fetch(url);
 
                 if (!response.ok) {
-                     // Adiciona uma mensagem de fallback, já que a busca por módulos falhou antes
-                    relatorioDiv.innerHTML = `<p style="color: #e74c3c;">⚠️ Erro ao buscar dados em tempo real da API para **${ticker}**. Gerando relatório com valores de cotação e mockados...</p>`;
-                    // Usaremos dados mockados apenas se a API falhar completamente
-                    throw new Error('API Falhou ou Ticker Inexistente.');
+                    throw new Error(`Erro na requisição (Status: ${response.status}).`);
                 }
 
                 const data = await response.json();
-                const stockData = data.results[0];
+                const quoteData = data.quoteResponse.result[0];
 
-                if (!stockData || !stockData.regularMarketPrice) {
-                    relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Ticker **${ticker}** não encontrado ou sem dados de cotação. Tente outro (Ex: BBDC4).</p>`;
+                if (!quoteData || !quoteData.regularMarketPrice) {
+                    relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Ticker **${ticker}** não encontrado ou sem dados fundamentalistas na fonte externa (Tente **PETR4** ou **BBDC4**).</p>`;
                     return;
                 }
 
-                // 2. EXTRAI E CALCULA INDICADORES (Prioriza dados reais, usa mock se o real falhar)
-                
-                // P/L e ROE real são frequentemente indisponíveis no plano gratuito. Usamos mock/fallback.
-                const plReal = stockData.pe; // Tenta pegar o P/L real (se existir)
-                const plValue = plReal !== undefined ? plReal : 15.5; // Valor mockado se não vier
-
-                const dyValue = stockData.dividendYield ? (stockData.dividendYield * 100).toFixed(2) : '2.50'; // Mock se não vier
+                // 2. EXTRAÇÃO DE DADOS REAIS
+                const plValue = quoteData.trailingPE;
+                const dyValue = quoteData.trailingAnnualDividendYield ? (quoteData.trailingAnnualDividendYield * 100).toFixed(2) : 'N/D';
                 
                 const plAnalise = analisarPL(plValue);
-                const dyAnalise = dyValue > 5 ? 'Alto' : 'Moderado';
+                const dyAnalise = dyValue !== 'N/D' && dyValue > 5 ? 'Alto' : 'Moderado';
 
+                // 3. CONSTRÓI O ARRAY DE INDICADORES (Reais + Mock com aviso)
                 const indicadoresFinais = [
                     {
                         nome: 'Preço Atual (R$)',
-                        descricao: 'Cotação atual do ativo no mercado.',
-                        valor: stockData.regularMarketPrice.toFixed(2),
+                        descricao: 'Cotação de mercado no momento da busca.',
+                        valor: quoteData.regularMarketPrice.toFixed(2),
                         analise: 'Cotação'
                     },
                     {
-                        nome: `PL (Preço/Lucro) ${plReal === undefined ? '(Mock)' : ''}`,
-                        descricao: 'Preço que você paga pelo lucro anual da empresa.',
-                        valor: plValue.toFixed(2) + 'x',
+                        nome: 'P/L (P/E Ratio) REAL',
+                        descricao: 'Mede o quão cara ou barata a ação está em relação ao seu lucro.',
+                        valor: plValue !== undefined ? plValue.toFixed(2) + 'x' : 'N/D',
                         analise: plAnalise.texto
                     },
                     {
-                        nome: 'Dividend Yield',
+                        nome: 'Dividend Yield REAL',
                         descricao: 'Retorno em dividendos nos últimos 12 meses.',
                         valor: dyValue + '%',
                         analise: dyAnalise
@@ -252,10 +246,11 @@
                     MOCK_DATA.ROE, 
                 ];
 
-                // 3. MONTA O HTML DO RELATÓRIO
+                // 4. MONTA O HTML DO RELATÓRIO
                 let htmlContent = `
                     <div class="report-section fundamentalista">
                         <h2>Relatório de Análise Fundamentalista: ${ticker}</h2>
+                        <p style="color: #f39c12;">⚠️ **AVISO:** O PEG e o ROE são **MOCKADOS** (dados simulados) devido à ausência de fontes gratuitas e abertas. O Preço, P/L e DY são **REAIS**.</p>
                         
                         <table class="fundamental-table">
                             <thead>
@@ -288,7 +283,7 @@
                         </table>
                         
                         <h3>Conclusão Fundamentalista</h3>
-                        <p>Ação **${ticker}** negociada a **R$ ${indicadoresFinais[0].valor}**. Com base nos indicadores fundamentais, o P/L (Simulado) a ${indicadoresFinais[1].valor} indica uma precificação **${indicadoresFinais[1].analise}**. O **PEG Ratio (Mock) a 0.85** é a chave para a análise de crescimento, sugerindo um potencial de crescimento subvalorizado. A decisão deve ser baseada em uma análise completa da gestão, endividamento e perspectivas do setor.</p>
+                        <p>Ação **${ticker}** negociada a **R$ ${indicadoresFinais[0].valor}**. Com um P/L de **${indicadoresFinais[1].valor}** (classificado como **${indicadoresFinais[1].analise}**), o ativo apresenta uma avaliação de preço em relação ao lucro ${indicadoresFinais[1].analise}. O foco deve ser a validação dos indicadores de crescimento (PEG e ROE) em fontes oficiais/pagas.</p>
                     </div>
                 `;
 
@@ -297,10 +292,7 @@
                     htmlContent += `
                         <div class="report-section tecnica" style="margin-top: 40px;">
                             <h2>Relatório de Análise Técnica: ${ticker}</h2>
-                            <p>Análise de Preço e Volume: O ativo está em tendência lateral no curto prazo. **Recomendação:** Aguardar rompimento de **R$ ${stockData.fiftyTwoWeekHigh.toFixed(2)}** (Resistência) para compra ou perda de **R$ ${stockData.fiftyTwoWeekLow.toFixed(2)}** (Suporte) para venda. 
-
-[Image of Technical analysis chart]
-
+                            <p>Análise de Preço e Volume: O ativo está em tendência lateral no curto prazo. **Recomendação:** Tendência indefinida, sugerindo **Cautela**.</p>
                         </div>
                     `;
                 }
@@ -308,11 +300,8 @@
                 relatorioDiv.innerHTML = htmlContent;
 
             } catch (error) {
-                // Caso a API falhe, mostra a mensagem de erro da busca simplificada.
                 console.error('Erro de busca na API:', error);
-                if (relatorioDiv.innerHTML.includes("Buscando dados")) {
-                     relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Não foi possível buscar dados para **${ticker}**. Verifique a ortografia do ticker ou o status da API.</p>`;
-                }
+                relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Erro na busca de dados reais. Isso pode ser devido ao Ticker incorreto, ou o serviço de **Proxy (CORS)** estar temporariamente indisponível. Tente novamente mais tarde.</p>`;
             }
         }
     </script>
