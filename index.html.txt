@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Análise de Ações</title>
+    <style>
+        /* CSS para estilização (Estilos básicos para clareza) */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        /* Área de Input e Configurações */
+        .config-area {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+        }
+        .input-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+        .input-group input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            width: 120px;
+            text-transform: uppercase;
+        }
+        .options-group {
+            display: flex;
+            gap: 20px;
+        }
+        .options-group label {
+            cursor: pointer;
+            user-select: none;
+        }
+        .generate-button {
+            padding: 10px 20px;
+            background-color: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .generate-button:hover {
+            background-color: #3498db;
+        }
+        /* Área de Relatório */
+        #relatorio {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+        }
+        .report-section h2 {
+            color: #16a085;
+            border-bottom: 2px solid #1abc9c;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        /* Tabela de Indicadores */
+        .fundamental-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .fundamental-table th, .fundamental-table td {
+            border: 1px solid #dddddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .fundamental-table th {
+            background-color: #ecf0f1;
+            color: #34495e;
+            font-weight: bold;
+        }
+        .fundamental-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        /* Estilos de Análise (A ser preenchido pelo JS) */
+        .barata { color: #27ae60; font-weight: bold; }
+        .justa { color: #f39c12; font-weight: bold; }
+        .cara { color: #c0392b; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Análise de Ações</h1>
+
+        <div class="config-area">
+            <div class="input-group">
+                <label for="ticker">Ticker da Ação:</label>
+                <input type="text" id="ticker" placeholder="Ex: PETR4" maxlength="6">
+            </div>
+
+            <div class="options-group">
+                <label>
+                    <input type="checkbox" id="analiseTecnica" checked>
+                    ANÁLISE TÉCNICA
+                </label>
+                <label>
+                    <input type="checkbox" id="analiseFundamentalista" checked>
+                    ANÁLISE FUNDAMENTALISTA
+                </label>
+            </div>
+
+            <button class="generate-button" onclick="gerarRelatorio()">GERAR RELATÓRIO</button>
+        </div>
+
+        <div id="relatorio">
+            <p id="instrucao">Digite um Ticker e clique em "GERAR RELATÓRIO" para iniciar a análise.</p>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript para simular a geração do relatório
+        const indicadoresFundamentalistas = [
+            {
+                nome: 'PL (Preço/Lucro)',
+                descricao: 'O preço que você paga pelo lucro anual da empresa. O ideal é entre 10 e 20.',
+                valor: '12.5x',
+                analise: 'Justa'
+            },
+            {
+                nome: 'PEG Ratio',
+                descricao: 'Relação entre PL e o Crescimento do Lucro (P/E to Growth). Abaixo de 1 é considerado barato.',
+                valor: '0.85',
+                analise: 'Barata'
+            },
+            {
+                nome: 'PSR (Preço/Receita)',
+                descricao: 'Preço sobre a Receita Líquida. Importante para empresas sem lucro. O ideal é abaixo de 1.',
+                valor: '1.2x',
+                analise: 'Justa'
+            },
+            {
+                nome: 'ROE (Return on Equity)',
+                descricao: 'Retorno sobre o Patrimônio Líquido. Indica a capacidade de gerar lucro a partir de seu capital.',
+                valor: '25.3%',
+                analise: 'Alto'
+            },
+            {
+                nome: 'Payout',
+                descricao: 'Percentual do lucro distribuído como dividendo.',
+                valor: '50%',
+                analise: 'Moderado'
+            },
+        ];
+
+        // Função principal chamada pelo botão
+        function gerarRelatorio() {
+            const tickerInput = document.getElementById('ticker');
+            const ticker = tickerInput.value.toUpperCase().trim();
+            const relatorioDiv = document.getElementById('relatorio');
+            const fundamentalistaChecked = document.getElementById('analiseFundamentalista').checked;
+
+            if (!ticker) {
+                alert('Por favor, digite o Ticker da Ação.');
+                return;
+            }
+            
+            // Simulação de busca/cálculo de dados
+            relatorioDiv.innerHTML = `<p>Buscando dados para **${ticker}**...</p>`;
+            
+            setTimeout(() => {
+                // Relatório Completo
+                let htmlContent = `
+                    <div class="report-section fundamentalista">
+                        <h2>Relatório de Análise Fundamentalista: ${ticker}</h2>
+                        
+                        <p>A Análise Fundamentalista, baseada nos indicadores de precificação (PL, PEG, PSR) e eficiência (ROE, Payout) discutidos no vídeo, fornece uma visão sobre o valor intrínseco e a saúde financeira da empresa.</p>
+                        
+                        <table class="fundamental-table">
+                            <thead>
+                                <tr>
+                                    <th>Indicador</th>
+                                    <th>Descrição</th>
+                                    <th>Valor Encontrado</th>
+                                    <th>Análise de Valor (Conforme vídeo)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                // Preencher a tabela com os indicadores
+                indicadoresFundamentalistas.forEach(item => {
+                    const classeAnalise = item.analise.toLowerCase().replace(' ', ''); // Cria classe CSS
+                    
+                    htmlContent += `
+                                <tr>
+                                    <td><strong>${item.nome}</strong></td>
+                                    <td>${item.descricao}</td>
+                                    <td>${item.valor}</td>
+                                    <td class="${classeAnalise}">${item.analise}</td>
+                                </tr>
+                    `;
+                });
+
+                htmlContent += `
+                            </tbody>
+                        </table>
+                        
+                        <h3>Tomada de Decisão (Conclusão Resumida)</h3>
+                        <p>Considerando o **PEG Ratio de ${indicadoresFundamentalistas[1].valor} (${indicadoresFundamentalistas[1].analise})** e o **PL de ${indicadoresFundamentalistas[0].valor} (${indicadoresFundamentalistas[0].analise})**, a ação apresenta um potencial de crescimento (ou está descontada) frente à média histórica, indicando que o preço pago pelo lucro futuro (crescimento) da empresa está atraente. No entanto, é crucial ler o relatório completo da empresa para validar a perspectiva de crescimento e a solidez do ROE e Payout.</p>
+
+                        <p><strong>Citação do Vídeo:</strong> O vídeo destaca que o **PEG Ratio** é superior ao PL para analisar empresas de crescimento, pois ele "olha para o futuro" dividindo o PL pela perspectiva de crescimento de lucros (o G de Growth), sendo **abaixo de 1 o ideal** [00:12:56].</p>
+                    </div>
+                `;
+
+                // Se a análise técnica também estivesse marcada (simulação)
+                const tecnicaChecked = document.getElementById('analiseTecnica').checked;
+                if (tecnicaChecked) {
+                    htmlContent += `
+                        <div class="report-section tecnica" style="margin-top: 40px;">
+                            <h2>Relatório de Análise Técnica: ${ticker}</h2>
+                            <p>Aqui seria incluída a análise gráfica: Médias Móveis, Suportes, Resistências, Volume e Indicadores de Momento (RSI, MACD, etc.).</p>
+                        </div>
+                    `;
+                }
+
+                relatorioDiv.innerHTML = htmlContent;
+
+            }, 1000); // Simula um pequeno atraso de carregamento
+        }
+    </script>
+</body>
+</html>
