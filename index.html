@@ -1,162 +1,324 @@
-<script>
-    // URL para busca no Google Finance (sem proxy, mais direto)
-    const GOOGLE_FINANCE_URL = 'https://www.google.com/finance/quote/';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Análise de Ações | RELATÓRIO PROFISSIONAL</title>
+    <style>
+        /* CSS para Estilização (DARK MODE PROFISSIONAL) */
+        :root {
+            --bg-color: #1e1e1e; /* Fundo Escuro */
+            --container-bg: #2d2d30; /* Fundo do Container */
+            --text-color: #f0f0f0; /* Texto Claro */
+            --primary-color: #2980b9; /* Azul (Botão) */
+            --secondary-color: #1abc9c; /* Verde Menta (Título) */
+            --border-color: #444444; /* Borda Escura */
+            --table-header-bg: #3c3c3c; /* Fundo do Cabeçalho da Tabela */
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: var(--container-bg);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+        }
+        h1 {
+            color: var(--secondary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+        /* Área de Input e Configurações */
+        .config-area {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #383838;
+        }
+        .input-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-color);
+        }
+        .input-group input[type="text"] {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+            width: 120px;
+            text-transform: uppercase;
+            background-color: #444444;
+            color: var(--text-color);
+        }
+        .options-group {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+        .options-group label {
+            cursor: pointer;
+            user-select: none;
+            color: var(--text-color);
+        }
+        .generate-button {
+            padding: 12px 25px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .generate-button:hover {
+            background-color: #3498db;
+        }
+        /* Área de Relatório */
+        #relatorio {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        .report-section h2 {
+            color: var(--secondary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 8px;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+        /* Tabela de Indicadores */
+        .fundamental-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .fundamental-table th, .fundamental-table td {
+            border: 1px solid var(--border-color);
+            padding: 14px;
+            text-align: left;
+        }
+        .fundamental-table th {
+            background-color: var(--table-header-bg);
+            color: var(--text-color);
+            font-weight: bold;
+        }
+        .fundamental-table tr:nth-child(even) {
+            background-color: #353538;
+        }
+        /* Estilos de Análise */
+        .barata { color: #27ae60; font-weight: bold; } /* Verde - Compra */
+        .justa { color: #f39c12; font-weight: bold; } /* Amarelo - Neutro */
+        .cara { color: #e74c3c; font-weight: bold; } /* Vermelho - Venda */
+        .moderado { color: #7f8c8d; font-weight: bold; }
+        .alto { color: #1abc9c; font-weight: bold; }
+        .cotacao, .nd, .indefinida { color: var(--text-color); }
+    </style>
+</head>
+<body>
 
-    // Mapeamento de indicadores CRUCIAIS que não estão disponíveis em fontes gratuitas/abertas (MOCK com aviso)
-    const MOCK_DATA = {
-        PEG: { nome: 'PEG Ratio (Mock)', valor: '0.85', analise: 'Barata', descricao: 'Relação entre PL e o Crescimento. ABAIXO DE 1 É IDEAL.' },
-        ROE: { nome: 'ROE (Mock)', valor: '25.3%', analise: 'Alto', descricao: 'Retorno sobre o Patrimônio Líquido. Acima de 15% é considerado excelente.' }
-    };
+    <div class="container">
+        <h1>📊 Sistema de Análise de Ações & Fundamentos</h1>
 
-    // Função auxiliar para determinar a análise de valor do PL (usando regra de 10-20 do vídeo)
-    function analisarPL(pl) {
-        if (pl === null || isNaN(pl) || pl === undefined) return { classe: 'nd', texto: 'N/D' };
-        if (pl < 10) return { classe: 'barata', texto: 'Barata' }; 
-        if (pl >= 10 && pl <= 20) return { classe: 'justa', texto: 'Justa' };
-        return { classe: 'cara', texto: 'Cara' };
-    }
-    
-    function formatarClasse(texto) {
-        return texto.toLowerCase().replace(/[\s\/\(\)]/g, '').replace('í', 'i');
-    }
+        <div class="config-area">
+            <div class="input-group">
+                <label for="ticker">Ticker da Ação:</label>
+                <input type="text" id="ticker" placeholder="Ex: RANI3" maxlength="6">
+            </div>
 
-    // Função principal chamada pelo botão
-    async function gerarRelatorio() {
-        const ticker = document.getElementById('ticker').value.toUpperCase().trim();
-        const relatorioDiv = document.getElementById('relatorio');
-        const tecnicaChecked = document.getElementById('analiseTecnica').checked;
+            <div class="options-group">
+                <label>
+                    <input type="checkbox" id="analiseTecnica" checked>
+                    ANÁLISE TÉCNICA
+                </label>
+                <label>
+                    <input type="checkbox" id="analiseFundamentalista" checked>
+                    ANÁLISE FUNDAMENTALISTA
+                </label>
+            </div>
 
-        if (!ticker) {
-            alert('Por favor, digite o Ticker da Ação (Ex: PETR4, BBDC4).');
-            return;
+            <button class="generate-button" onclick="gerarRelatorio()">GERAR RELATÓRIO</button>
+        </div>
+
+        <div id="relatorio">
+            <p id="instrucao">Digite um Ticker e clique em "GERAR RELATÓRIO" para iniciar a análise.</p>
+        </div>
+    </div>
+
+    <script>
+        // Fonte de dados mais robusta e estruturada (Yahoo Finance)
+        const YAHOO_FINANCE_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=';
+        
+        // ⚠️ PROXY CORS MAIS ESTÁVEL: Usamos um serviço público para contornar o bloqueio de segurança do navegador.
+        const CORS_PROXY = 'https://api.allorigins.win/get?url='; 
+
+        // Mapeamento de indicadores CRUCIAIS que não estão disponíveis em fontes gratuitas/abertas (MOCK com aviso)
+        const MOCK_DATA = {
+            PEG: { nome: 'PEG Ratio (Mock)', valor: '0.85', analise: 'Barata', descricao: 'Relação entre PL e o Crescimento. ABAIXO DE 1 É IDEAL.' },
+            ROE: { nome: 'ROE (Mock)', valor: '25.3%', analise: 'Alto', descricao: 'Retorno sobre o Patrimônio Líquido. Acima de 15% é considerado excelente.' }
+        };
+
+        // Função auxiliar para determinar a análise de valor do PL (usando regra de 10-20 do vídeo)
+        function analisarPL(pl) {
+            if (pl === null || isNaN(pl) || pl === undefined) return { classe: 'nd', texto: 'N/D' };
+            if (pl < 10) return { classe: 'barata', texto: 'Barata' }; 
+            if (pl >= 10 && pl <= 20) return { classe: 'justa', texto: 'Justa' };
+            return { classe: 'cara', texto: 'Cara' };
+        }
+        
+        function formatarClasse(texto) {
+            return texto.toLowerCase().replace(/[\s\/\(\)]/g, '').replace('í', 'i');
         }
 
-        relatorioDiv.innerHTML = `<p>Buscando dados **REAIS** (Google Finance) para **${ticker}**. Aguarde...</p>`;
+        // Função principal chamada pelo botão
+        async function gerarRelatorio() {
+            const ticker = document.getElementById('ticker').value.toUpperCase().trim();
+            const relatorioDiv = document.getElementById('relatorio');
+            const tecnicaChecked = document.getElementById('analiseTecnica').checked;
 
-        try {
-            // 1. CHAMA O GOOGLE FINANCE
-            // Este método é propenso a falhas de CORS, mas é o mais direto sem proxy ou backend.
-            const symbol = `BVMF%3A${ticker}`; // Formato do Google Finance para B3
-            const url = GOOGLE_FINANCE_URL + symbol;
-            
-            // Usando uma API pública temporária que tenta buscar HTML e extrair dados
-            // Isso é um último recurso para evitar o CORS
-            const publicApi = `https://cors-proxy.fintz.workers.dev/api/data?url=${encodeURIComponent(url)}`;
-            
-            const response = await fetch(publicApi);
-
-            if (!response.ok) {
-                throw new Error(`Erro na requisição (Status: ${response.status}).`);
-            }
-
-            const data = await response.json();
-            const htmlContent = data.data;
-
-            // Tentativa de extrair dados do HTML (Web Scraping Básico em JS Puro)
-            // ESTE MÉTODO É EXTREMAMENTE FRÁGIL E QUEBRA FACILMENTE
-            
-            // Extrai o Preço
-            const priceMatch = htmlContent.match(/<div class="YMlKec fxKbKc">(.+?)<\/div>/);
-            const priceText = priceMatch ? priceMatch[1].replace('R$', '').trim().replace('.', '').replace(',', '.') : 'N/D';
-            const priceValue = parseFloat(priceText);
-            
-            // Extrai o P/L (P/E Ratio)
-            const peMatch = htmlContent.match(/P\/L<\/div><div class="P6K7Qc">(.+?)<\/div>/);
-            const peText = peMatch ? peMatch[1].trim().replace(',', '.') : 'N/D';
-            const plValue = parseFloat(peText);
-
-            // Mockando o DY, pois extraí-lo confiavelmente do Google Finance é muito complexo
-            const dyValue = '4.50'; 
-
-            if (isNaN(priceValue)) {
-                relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Ticker **${ticker}** não encontrado ou o formato do site mudou. (Tente **PETR4** ou **BBDC4**).</p>`;
+            if (!ticker) {
+                alert('Por favor, digite o Ticker da Ação (Ex: PETR4, BBDC4).');
                 return;
             }
 
-            // 2. ANÁLISE DOS DADOS REAIS
-            const plAnalise = analisarPL(plValue);
-            const dyAnalise = dyValue !== 'N/D' && dyValue > 5 ? 'Alto' : 'Moderado';
+            relatorioDiv.innerHTML = `<p>Buscando dados **REAIS** (Preço e P/L) para **${ticker}** via Proxy. Aguarde...</p>`;
 
-            // 3. CONSTRÓI O ARRAY DE INDICADORES
-            const indicadoresFinais = [
-                {
-                    nome: 'Preço Atual (R$)',
-                    descricao: 'Cotação de mercado no momento da busca.',
-                    valor: priceValue.toFixed(2),
-                    analise: 'Cotação'
-                },
-                {
-                    nome: 'P/L (P/E Ratio) REAL',
-                    descricao: 'Mede o quão cara ou barata a ação está em relação ao seu lucro.',
-                    valor: plValue !== undefined && !isNaN(plValue) ? plValue.toFixed(2) + 'x' : 'N/D',
-                    analise: plAnalise.texto
-                },
-                {
-                    nome: 'Dividend Yield (Mock)',
-                    descricao: 'Retorno em dividendos nos últimos 12 meses.',
-                    valor: dyValue + '%',
-                    analise: dyAnalise
-                },
-                MOCK_DATA.PEG,
-                MOCK_DATA.ROE, 
-            ];
-
-            // 4. MONTA O HTML DO RELATÓRIO (mantendo o estilo Dark Mode)
-            let htmlContent = `
-                <div class="report-section fundamentalista">
-                    <h2>Relatório de Análise Fundamentalista: ${ticker}</h2>
-                    <p style="color: #f39c12;">⚠️ **AVISO:** O P/L e o Preço são **REAIS** (extraídos do Google Finance), mas a extração é frágil. O PEG, ROE e DY são **MOCKADOS**.</p>
-                    
-                    <table class="fundamental-table">
-                        <thead>
-                            <tr>
-                                <th>Indicador</th>
-                                <th>Descrição</th>
-                                <th>Valor Encontrado</th>
-                                <th>Análise de Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            // Preencher a tabela
-            indicadoresFinais.forEach(item => {
-                const classeAnalise = formatarClasse(item.analise);
+            try {
+                // 1. CONSTRUÇÃO DA URL COM SUFIXO BRASILEIRO E O NOVO PROXY
+                const symbol = `${ticker}.SA`;
+                const originalUrl = YAHOO_FINANCE_URL + symbol;
                 
-                htmlContent += `
-                    <tr>
-                        <td><strong>${item.nome}</strong></td>
-                        <td>${item.descricao}</td>
-                        <td>${item.valor}</td>
-                        <td class="${classeAnalise}">${item.analise}</td>
-                    </tr>
+                // A API allorigins.win envolve a URL de destino
+                const url = `${CORS_PROXY}${encodeURIComponent(originalUrl)}`;
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição (Status: ${response.status}).`);
+                }
+
+                // O allorigins.win retorna um JSON, e o JSON original está dentro do campo 'contents'
+                const proxyData = await response.json();
+                
+                // Tenta fazer o parse do JSON de conteúdo
+                let data;
+                try {
+                    data = JSON.parse(proxyData.contents); 
+                } catch (e) {
+                    throw new Error("Erro ao processar dados do proxy. JSON inválido.");
+                }
+
+                const quoteData = data.quoteResponse.result[0];
+
+                if (!quoteData || !quoteData.regularMarketPrice) {
+                    relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Ticker **${ticker}** não encontrado ou o proxy falhou. Tente **PETR4** ou **BBDC4**.</p>`;
+                    return;
+                }
+
+                // 2. EXTRAÇÃO DE DADOS REAIS
+                const plValue = quoteData.trailingPE;
+                const dyValue = quoteData.trailingAnnualDividendYield ? (quoteData.trailingAnnualDividendYield * 100).toFixed(2) : 'N/D';
+                
+                const plAnalise = analisarPL(plValue);
+                const dyAnalise = dyValue !== 'N/D' && dyValue > 5 ? 'Alto' : 'Moderado';
+
+                // 3. CONSTRÓI O ARRAY DE INDICADORES (Reais + Mock com aviso)
+                const indicadoresFinais = [
+                    {
+                        nome: 'Preço Atual (R$)',
+                        descricao: 'Cotação de mercado em tempo real.',
+                        valor: quoteData.regularMarketPrice.toFixed(2),
+                        analise: 'Cotação'
+                    },
+                    {
+                        nome: 'P/L (P/E Ratio) REAL',
+                        descricao: 'Mede o quão cara ou barata a ação está em relação ao seu lucro.',
+                        valor: plValue !== undefined ? plValue.toFixed(2) + 'x' : 'N/D',
+                        analise: plAnalise.texto
+                    },
+                    {
+                        nome: 'Dividend Yield REAL',
+                        descricao: 'Retorno em dividendos nos últimos 12 meses.',
+                        valor: dyValue + '%',
+                        analise: dyAnalise
+                    },
+                    MOCK_DATA.PEG,
+                    MOCK_DATA.ROE, 
+                ];
+
+                // 4. MONTA O HTML DO RELATÓRIO
+                let htmlContent = `
+                    <div class="report-section fundamentalista">
+                        <h2>Relatório de Análise Fundamentalista: ${ticker}</h2>
+                        <p style="color: #f39c12;">⚠️ **AVISO:** O Preço, P/L e DY são **REAIS** (via Yahoo Finance). O PEG e ROE são **MOCKADOS** devido à ausência de fontes gratuitas e estáveis.</p>
+                        
+                        <table class="fundamental-table">
+                            <thead>
+                                <tr>
+                                    <th>Indicador</th>
+                                    <th>Descrição</th>
+                                    <th>Valor Encontrado</th>
+                                    <th>Análise de Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                 `;
-            });
 
-            htmlContent += `
-                        </tbody>
-                    </table>
+                // Preencher a tabela
+                indicadoresFinais.forEach(item => {
+                    const classeAnalise = formatarClasse(item.analise);
                     
-                    <h3>Conclusão Fundamentalista</h3>
-                    <p>Ação **${ticker}** negociada a **R$ ${indicadoresFinais[0].valor}**. O P/L de **${indicadoresFinais[1].valor}** indica uma avaliação **${indicadoresFinais[1].analise}**. A análise completa requer a validação de todos os indicadores em fontes robustas.</p>
-                </div>
-            `;
+                    htmlContent += `
+                        <tr>
+                            <td><strong>${item.nome}</strong></td>
+                            <td>${item.descricao}</td>
+                            <td>${item.valor}</td>
+                            <td class="${classeAnalise}">${item.analise}</td>
+                        </tr>
+                    `;
+                });
 
-            // Adiciona Análise Técnica (Mockup)
-            if (tecnicaChecked) {
                 htmlContent += `
-                    <div class="report-section tecnica" style="margin-top: 40px;">
-                        <h2>Relatório de Análise Técnica: ${ticker}</h2>
-                        <p>Análise de Preço e Volume: O ativo está em tendência lateral no curto prazo. **Recomendação:** Tendência indefinida, sugerindo **Cautela**.</p>
+                            </tbody>
+                        </table>
+                        
+                        <h3>Conclusão Fundamentalista</h3>
+                        <p>Ação **${ticker}** negociada a **R$ ${indicadoresFinais[0].valor}**. Com um P/L de **${indicadoresFinais[1].valor}** (classificado como **${indicadoresFinais[1].analise}**), o ativo tem uma avaliação de preço em relação ao lucro ${indicadoresFinais[1].analise}. A estabilidade do sistema depende da disponibilidade do serviço de proxy CORS.</p>
                     </div>
                 `;
+
+                // Adiciona Análise Técnica (Mockup)
+                if (tecnicaChecked) {
+                    htmlContent += `
+                        <div class="report-section tecnica" style="margin-top: 40px;">
+                            <h2>Relatório de Análise Técnica: ${ticker}</h2>
+                            <p>Análise de Preço e Volume: O ativo está em tendência lateral no curto prazo. **Recomendação:** Tendência indefinida, sugerindo **Cautela**.</p>
+                        </div>
+                    `;
+                }
+
+                relatorioDiv.innerHTML = htmlContent;
+
+            } catch (error) {
+                console.error('Erro de busca na API:', error);
+                relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Erro na busca de dados reais. Isso pode ser devido ao Ticker incorreto, ou o serviço de **Proxy (CORS)** estar temporariamente indisponível. Tente novamente mais tarde.</p>`;
             }
-
-            relatorioDiv.innerHTML = htmlContent;
-
-        } catch (error) {
-            console.error('Erro de busca na API:', error);
-            relatorioDiv.innerHTML = `<p style="color: #e74c3c;">❌ Falha Crítica: Não foi possível buscar dados. O web scraping é instável (Formato do site mudou), ou o serviço de proxy falhou. </p>`;
         }
-    }
-</script>
+    </script>
+</body>
+</html>
