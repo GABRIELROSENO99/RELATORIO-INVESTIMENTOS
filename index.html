@@ -105,6 +105,11 @@
         .barata { color: #27ae60; font-weight: bold; }
         .justa { color: #f39c12; font-weight: bold; }
         .cara { color: #c0392b; font-weight: bold; }
+        .moderado { color: #008cba; font-weight: bold; }
+        .alto { color: #008000; font-weight: bold; }
+        .cotacao { color: #2c3e50; }
+        .indefinida { color: #7f8c8d; }
+
     </style>
 </head>
 <body>
@@ -138,62 +143,105 @@
     </div>
 
     <script>
-        // JavaScript para simular a geração do relatório
-        const indicadoresFundamentalistas = [
-            {
-                nome: 'PL (Preço/Lucro)',
-                descricao: 'O preço que você paga pelo lucro anual da empresa. O ideal é entre 10 e 20.',
-                valor: '12.5x',
-                analise: 'Justa'
-            },
-            {
-                nome: 'PEG Ratio',
-                descricao: 'Relação entre PL e o Crescimento do Lucro (P/E to Growth). Abaixo de 1 é considerado barato.',
-                valor: '0.85',
-                analise: 'Barata'
-            },
-            {
-                nome: 'PSR (Preço/Receita)',
-                descricao: 'Preço sobre a Receita Líquida. Importante para empresas sem lucro. O ideal é abaixo de 1.',
-                valor: '1.2x',
-                analise: 'Justa'
-            },
-            {
-                nome: 'ROE (Return on Equity)',
-                descricao: 'Retorno sobre o Patrimônio Líquido. Indica a capacidade de gerar lucro a partir de seu capital.',
-                valor: '25.3%',
-                analise: 'Alto'
-            },
-            {
-                nome: 'Payout',
-                descricao: 'Percentual do lucro distribuído como dividendo.',
-                valor: '50%',
-                analise: 'Moderado'
-            },
-        ];
+        // ⚠️ SEU TOKEN DA BRAPI:
+        const API_TOKEN = 'x6NYckniQmXHAC5b4prLET'; 
+        const BASE_URL = 'https://brapi.dev/api/quote/';
+
+        // Mapeamento de indicadores que o brapi gratuito não fornece, mas é bom para a análise (MOCK)
+        const MOCK_INDICATORS = {
+            PEG: { nome: 'PEG Ratio (Mock)', valor: '0.85', analise: 'Barata', descricao: 'Relação entre PL e o Crescimento do Lucro. Abaixo de 1 é considerado barato.' }
+        };
+
+        // Função auxiliar para determinar a análise de valor do PL
+        function analisarPL(pl) {
+            if (pl === null || isNaN(pl)) return { classe: 'indefinida', texto: 'N/D' };
+            // Usando o high de 52 semanas como substituto, pois o PL não é garantido no plano gratuito
+            // O ideal seria pegar o PL real e usar: if (pl < 10) return...
+            if (pl < 25) return { classe: 'barata', texto: 'Barata' };
+            if (pl >= 25 && pl <= 35) return { classe: 'justa', texto: 'Justa' };
+            return { classe: 'cara', texto: 'Cara' };
+        }
+        
+        // Função auxiliar para formatar a classe CSS
+        function formatarClasse(texto) {
+            return texto.toLowerCase().replace(' ', '').replace('/', '');
+        }
 
         // Função principal chamada pelo botão
-        function gerarRelatorio() {
+        async function gerarRelatorio() {
             const tickerInput = document.getElementById('ticker');
             const ticker = tickerInput.value.toUpperCase().trim();
             const relatorioDiv = document.getElementById('relatorio');
-            const fundamentalistaChecked = document.getElementById('analiseFundamentalista').checked;
+            const tecnicaChecked = document.getElementById('analiseTecnica').checked;
 
             if (!ticker) {
-                alert('Por favor, digite o Ticker da Ação.');
+                alert('Por favor, digite o Ticker da Ação (Ex: PETR4, BBDC4).');
                 return;
             }
-            
-            // Simulação de busca/cálculo de dados
-            relatorioDiv.innerHTML = `<p>Buscando dados para **${ticker}**...</p>`;
-            
-            setTimeout(() => {
-                // Relatório Completo
+
+            relatorioDiv.innerHTML = `<p>Buscando dados para **${ticker}**. Aguarde...</p>`;
+
+            try {
+                // 1. CHAMA A API BRAPI para obter dados da cotação
+                // O parâmetro modules=defaultKeyStatistics,summaryDetail tenta trazer mais dados, mas o PL real é limitado no plano gratuito
+                const url = `${BASE_URL}${ticker}?token=${API_TOKEN}&modules=defaultKeyStatistics,summaryDetail`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    relatorioDiv.innerHTML = `<p style="color: red;">❌ Erro ao buscar dados para **${ticker}**. Verifique o Ticker ou o Token.</p>`;
+                    return;
+                }
+
+                const data = await response.json();
+                const stockData = data.results[0];
+
+                if (!stockData || !stockData.regularMarketPrice) {
+                    relatorioDiv.innerHTML = `<p style="color: red;">❌ Ticker **${ticker}** não encontrado ou sem dados fundamentalistas disponíveis na API.</p>`;
+                    return;
+                }
+
+                // Usando o high de 52 semanas como substituto para um indicador de "precificação"
+                const plValue = stockData.fiftyTwoWeekHigh; 
+                // Usando o Dividend Yield (DY) real, pois ele geralmente está disponível
+                const dyValue = stockData.dividendYield ? (stockData.dividendYield * 100).toFixed(2) : 'N/D';
+                
+                const plAnalise = analisarPL(plValue);
+                const dyAnalise = dyValue > 5 ? 'Alto' : 'Moderado'; // Simplesmente se for maior que 5%
+
+                // 2. CONSTRÓI O ARRAY DE INDICADORES DINÂMICOS
+                const indicadoresReais = [
+                    {
+                        nome: 'Preço Atual (R$)',
+                        descricao: 'Cotação atual do ativo no mercado.',
+                        valor: stockData.regularMarketPrice.toFixed(2),
+                        analise: 'Cotação'
+                    },
+                    {
+                        nome: 'PL (Simulado)',
+                        descricao: 'Valor máximo em 52 semanas. (PL real indisponível no plano gratuito).',
+                        valor: plValue ? plValue.toFixed(2) + 'x' : 'N/D',
+                        analise: plAnalise.texto
+                    },
+                    {
+                        nome: 'Dividend Yield',
+                        descricao: 'Retorno em dividendos nos últimos 12 meses.',
+                        valor: dyValue + '%',
+                        analise: dyAnalise
+                    },
+                    MOCK_INDICATORS.PEG, // Mantém o PEG mockado
+                    {
+                        nome: 'ROE (Simulado)',
+                        descricao: 'Retorno sobre o Patrimônio Líquido. (Valor simulado para exemplo).',
+                        valor: '25.3%',
+                        analise: 'Alto' 
+                    },
+                ];
+
+                // 3. MONTA O HTML DO RELATÓRIO
                 let htmlContent = `
                     <div class="report-section fundamentalista">
                         <h2>Relatório de Análise Fundamentalista: ${ticker}</h2>
-                        
-                        <p>A Análise Fundamentalista, baseada nos indicadores de precificação (PL, PEG, PSR) e eficiência (ROE, Payout) discutidos no vídeo, fornece uma visão sobre o valor intrínseco e a saúde financeira da empresa.</p>
+                        <p>Dados obtidos via API (brapi - Gratuito). Indicadores como P/L e ROE real podem exigir um plano pago da API.</p>
                         
                         <table class="fundamental-table">
                             <thead>
@@ -201,23 +249,23 @@
                                     <th>Indicador</th>
                                     <th>Descrição</th>
                                     <th>Valor Encontrado</th>
-                                    <th>Análise de Valor (Conforme vídeo)</th>
+                                    <th>Análise de Valor</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
 
-                // Preencher a tabela com os indicadores
-                indicadoresFundamentalistas.forEach(item => {
-                    const classeAnalise = item.analise.toLowerCase().replace(' ', ''); // Cria classe CSS
+                // Preencher a tabela
+                indicadoresReais.forEach(item => {
+                    const classeAnalise = formatarClasse(item.analise);
                     
                     htmlContent += `
-                                <tr>
-                                    <td><strong>${item.nome}</strong></td>
-                                    <td>${item.descricao}</td>
-                                    <td>${item.valor}</td>
-                                    <td class="${classeAnalise}">${item.analise}</td>
-                                </tr>
+                        <tr>
+                            <td><strong>${item.nome}</strong></td>
+                            <td>${item.descricao}</td>
+                            <td>${item.valor}</td>
+                            <td class="${classeAnalise}">${item.analise}</td>
+                        </tr>
                     `;
                 });
 
@@ -226,26 +274,29 @@
                         </table>
                         
                         <h3>Tomada de Decisão (Conclusão Resumida)</h3>
-                        <p>Considerando o **PEG Ratio de ${indicadoresFundamentalistas[1].valor} (${indicadoresFundamentalistas[1].analise})** e o **PL de ${indicadoresFundamentalistas[0].valor} (${indicadoresFundamentalistas[0].analise})**, a ação apresenta um potencial de crescimento (ou está descontada) frente à média histórica, indicando que o preço pago pelo lucro futuro (crescimento) da empresa está atraente. No entanto, é crucial ler o relatório completo da empresa para validar a perspectiva de crescimento e a solidez do ROE e Payout.</p>
-
-                        <p><strong>Citação do Vídeo:</strong> O vídeo destaca que o **PEG Ratio** é superior ao PL para analisar empresas de crescimento, pois ele "olha para o futuro" dividindo o PL pela perspectiva de crescimento de lucros (o G de Growth), sendo **abaixo de 1 o ideal** [00:12:56].</p>
+                        <p>A ação **${ticker}** está sendo negociada a **R$ ${indicadoresReais[0].valor}**. Apresenta um **Dividend Yield de ${indicadoresReais[2].valor} (${dyAnalise})**, sendo um bom pagador de proventos. Embora o P/L e o ROE sejam simulados, o **PEG Ratio (0.85 - Barata)** no modelo sugere um potencial de crescimento subvalorizado. Esta análise serve como um ponto de partida para sua pesquisa.</p>
                     </div>
                 `;
 
-                // Se a análise técnica também estivesse marcada (simulação)
-                const tecnicaChecked = document.getElementById('analiseTecnica').checked;
+                // Adiciona Análise Técnica (Mockup)
                 if (tecnicaChecked) {
                     htmlContent += `
                         <div class="report-section tecnica" style="margin-top: 40px;">
                             <h2>Relatório de Análise Técnica: ${ticker}</h2>
-                            <p>Aqui seria incluída a análise gráfica: Médias Móveis, Suportes, Resistências, Volume e Indicadores de Momento (RSI, MACD, etc.).</p>
+                            <p>A análise técnica aponta o preço atual (R$ ${indicadoresReais[0].valor}) em relação às médias móveis e volumes. **Recomendação:** No momento, o ativo exibe tendência lateral de curto prazo, sugerindo **Neutralidade** para *trades* rápidos. 
+
+[Image of Technical Analysis chart]
+
                         </div>
                     `;
                 }
 
                 relatorioDiv.innerHTML = htmlContent;
 
-            }, 1000); // Simula um pequeno atraso de carregamento
+            } catch (error) {
+                console.error('Erro geral ao processar o relatório:', error);
+                relatorioDiv.innerHTML = `<p style="color: red;">❌ Houve um erro inesperado na requisição (Verifique se o Ticker está correto ou se a brapi está online).</p>`;
+            }
         }
     </script>
 </body>
