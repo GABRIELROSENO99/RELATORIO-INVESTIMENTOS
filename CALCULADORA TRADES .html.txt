@@ -1,0 +1,157 @@
+import yfinance as yf
+from colorama import Fore, Style, init
+
+# Inicializa o colorama para cores no terminal
+init(autoreset=True)
+
+class TradeCalculator:
+    def __init__(self):
+        self.ativo = ""
+        self.compra_valor = 0.0
+        self.compra_qtd = 0
+        self.venda_valor = 0.0
+        self.tipo_operacao = "SWING TRADE" # Padrão
+        self.irrf_aliquota_swing = 0.00005 # 0.005%
+
+    def _obter_dados_empresa(self):
+        """Busca informações básicas da empresa usando yfinance."""
+        try:
+            ticker = yf.Ticker(self.ativo)
+            info = ticker.info
+            
+            # Filtra algumas informações relevantes
+            nome_empresa = info.get('longName', 'Não Disponível')
+            setor = info.get('sector', 'Não Disponível')
+            website = info.get('website', 'Não Disponível')
+            preco_atual = info.get('currentPrice', 'Não Disponível')
+            
+            print(f"\n--- ℹ️ Informações da Empresa ({self.ativo}) ---")
+            print(f"Nome: {nome_empresa}")
+            print(f"Setor: {setor}")
+            print(f"Site: {website}")
+            print(f"Preço Atual (Aproximado): R$ {preco_atual}")
+            print("---------------------------------------------")
+            
+        except Exception as e:
+            print(f"{Fore.YELLOW}Aviso: Não foi possível obter informações detalhadas para o ativo {self.ativo}. ({e})")
+
+    def _obter_input_usuario(self):
+        """Coleta as entradas do usuário."""
+        self.ativo = input("1. Insira o Ticker do Ativo (ex: PETR4.SA, MGLU3.SA): ").upper()
+        self.compra_valor = float(input("2. Preço de COMPRA por papel (R$): "))
+        self.compra_qtd = int(input("3. Quantidade de papéis comprados: "))
+        self.venda_valor = float(input("4. Preço de VENDA por papel (R$): "))
+        
+        print("\n5. Tipo de Operação:")
+        escolha = input("   (Padrão: SWING TRADE) Digite 'D' para DAY TRADE ou pressione ENTER para SWING TRADE: ").upper()
+        if escolha == 'D':
+            self.tipo_operacao = "DAY TRADE"
+        else:
+            self.tipo_operacao = "SWING TRADE"
+
+    def _calcular_metrics(self):
+        """Executa os cálculos financeiros e fiscais."""
+        
+        # 1. Valores Totais
+        valor_total_compra = self.compra_valor * self.compra_qtd
+        valor_total_venda = self.venda_valor * self.compra_qtd
+        
+        # 2. Lucro/Prejuízo Bruto
+        lucro_bruto_auferido = valor_total_venda - valor_total_compra
+
+        # 3. Impostos (Baseado nas regras fornecidas)
+        
+        # O IRRF ("Dedo-Duro") é sempre retido pela corretora na fonte.
+        # Swing Trade: 0,005% sobre o valor total vendido (conforme especificado pelo usuário)
+        irrf_recolhido_corretora = valor_total_venda * self.irrf_aliquota_swing
+        
+        ir_devido_total = 0.0
+        aliquota_efetiva = 0.0
+        
+        if lucro_bruto_auferido > 0:
+            if self.tipo_operacao == "SWING TRADE":
+                aliquota_efetiva = 0.15 # Alíquota Swing Trade (15% sobre o lucro)
+            elif self.tipo_operacao == "DAY TRADE":
+                aliquota_efetiva = 0.20 # Alíquota Day Trade (20% sobre o lucro)
+            
+            # IR Total devido sobre o lucro
+            ir_devido_total = lucro_bruto_auferido * aliquota_efetiva
+        
+        # IR a ser pago via DARF (Diferença)
+        # Se lucro_bruto_auferido < 0, o IR Devido é zero e o DARF é zero.
+        ir_devido_darf = max(0, ir_devido_total - irrf_recolhido_corretora)
+
+        return {
+            "valor_total_compra": valor_total_compra,
+            "valor_total_venda": valor_total_venda,
+            "lucro_bruto_auferido": lucro_bruto_auferido,
+            "ir_devido_total": ir_devido_total,
+            "irrf_recolhido_corretora": irrf_recolhido_corretora,
+            "ir_devido_darf": ir_devido_darf,
+            "aliquota_efetiva": aliquota_efetiva
+        }
+
+    def _apresentar_relatorio(self, resultados):
+        """Imprime o relatório final."""
+        
+        lucro_bruto = resultados['lucro_bruto_auferido']
+        
+        # Formatação de Lucro/Prejuízo com cor
+        cor_lucro = Fore.GREEN if lucro_bruto >= 0 else Fore.RED
+        status_lucro = cor_lucro + f"R$ {lucro_bruto:,.2f}" + Style.RESET_ALL
+        
+        print("\n" + "="*50)
+        print(f"💰 RELATÓRIO DE TRADE - {self.tipo_operacao}")
+        print("="*50)
+        
+        print(f"ATIVO NEGOCIADO: {self.ativo}")
+        print(f"QTD. NEGOCIADA: {self.compra_qtd}")
+        print(f"PREÇO MÉDIO COMPRA: R$ {self.compra_valor:,.2f}")
+        print(f"PREÇO MÉDIO VENDA: R$ {self.venda_valor:,.2f}")
+        
+        print("-" * 50)
+        
+        # Seção de Valores e Lucro
+        print(f"VALOR TOTAL DA COMPRA: R$ {resultados['valor_total_compra']:,.2f}")
+        print(f"VALOR TOTAL DA VENDA: R$ {resultados['valor_total_venda']:,.2f}")
+        print(f"LUCRO/PREJUÍZO BRUTO: {status_lucro}")
+        
+        print("-" * 50)
+        
+        # Seção de Impostos
+        print(f"TIPO DE OPERAÇÃO: {self.tipo_operacao}")
+        
+        if lucro_bruto > 0:
+            print(f"ALÍQUOTA DE IR: {int(resultados['aliquota_efetiva'] * 100)}%")
+            print(f"IR DEVIDO TOTAL (Lucro * Alíquota): R$ {resultados['ir_devido_total']:,.2f}")
+            print(f"IRRF RECOLHIDO NA FONTE (0,005% da Venda): R$ {resultados['irrf_recolhido_corretora']:,.2f}")
+            print(f"{Fore.CYAN}IR A PAGAR VIA DARF (Diferença): R$ {resultados['ir_devido_darf']:,.2f}{Style.RESET_ALL}")
+            print(f"    (Atenção: Você deve pagar esta DARF até o último dia útil do mês subsequente.)")
+        else:
+            print(f"Não há IR devido, pois não houve lucro ou houve prejuízo de R$ {abs(lucro_bruto):,.2f}.")
+            print(f"IRRF RECOLHIDO NA FONTE (0,005% da Venda): R$ {resultados['irrf_recolhido_corretora']:,.2f}")
+            print(f"IR A PAGAR VIA DARF (Diferença): R$ 0,00")
+            print("    (O prejuízo pode ser compensado em lucros futuros.)")
+        
+        print("="*50)
+
+    def rodar(self):
+        """Ponto de entrada da ferramenta."""
+        try:
+            self._obter_input_usuario()
+            
+            # Buscar informações do ativo antes de apresentar o relatório
+            self._obter_dados_empresa() 
+            
+            resultados = self._calcular_metrics()
+            self._apresentar_relatorio(resultados)
+            
+        except ValueError:
+            print(f"{Fore.RED}Erro: Por favor, insira valores numéricos válidos para preço e quantidade.{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.RED}Ocorreu um erro inesperado: {e}{Style.RESET_ALL}")
+
+# --- Execução da Ferramenta ---
+if __name__ == "__main__":
+    app = TradeCalculator()
+    app.rodar()
