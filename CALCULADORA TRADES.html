@@ -1,157 +1,224 @@
-import yfinance as yf
-from colorama import Fore, Style, init
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de IR para Trades</title>
+    <style>
+        /* CSS para Estilo e Layout */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Garante que o padding não aumente a largura total */
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #relatorio {
+            margin-top: 25px;
+            padding: 15px;
+            border: 1px dashed #6c757d;
+            border-radius: 4px;
+            background-color: #e9ecef;
+        }
+        .result-item {
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+        .result-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 60%;
+        }
+        .result-value {
+            float: right;
+            font-weight: bold;
+        }
+        /* Cores para Lucro/Prejuízo */
+        .lucro { color: green; }
+        .prejuizo { color: red; }
+        .darf { color: #007bff; }
+        .header-section {
+            font-weight: bold;
+            margin-top: 10px;
+            padding-top: 5px;
+            border-top: 2px solid #adb5bd;
+        }
+    </style>
+</head>
+<body>
 
-# Inicializa o colorama para cores no terminal
-init(autoreset=True)
+<div class="container">
+    <h2>💰 Calculadora de IR para Trades</h2>
 
-class TradeCalculator:
-    def __init__(self):
-        self.ativo = ""
-        self.compra_valor = 0.0
-        self.compra_qtd = 0
-        self.venda_valor = 0.0
-        self.tipo_operacao = "SWING TRADE" # Padrão
-        self.irrf_aliquota_swing = 0.00005 # 0.005%
+    <div class="input-group">
+        <label for="ativo">Ativo Negociado (Ex: PETR4)</label>
+        <input type="text" id="ativo" value="PETR4" required>
+    </div>
+    
+    <div class="input-group">
+        <label for="qtd">Quantidade de Papéis</label>
+        <input type="number" id="qtd" value="100" min="1" required>
+    </div>
 
-    def _obter_dados_empresa(self):
-        """Busca informações básicas da empresa usando yfinance."""
-        try:
-            ticker = yf.Ticker(self.ativo)
-            info = ticker.info
-            
-            # Filtra algumas informações relevantes
-            nome_empresa = info.get('longName', 'Não Disponível')
-            setor = info.get('sector', 'Não Disponível')
-            website = info.get('website', 'Não Disponível')
-            preco_atual = info.get('currentPrice', 'Não Disponível')
-            
-            print(f"\n--- ℹ️ Informações da Empresa ({self.ativo}) ---")
-            print(f"Nome: {nome_empresa}")
-            print(f"Setor: {setor}")
-            print(f"Site: {website}")
-            print(f"Preço Atual (Aproximado): R$ {preco_atual}")
-            print("---------------------------------------------")
-            
-        except Exception as e:
-            print(f"{Fore.YELLOW}Aviso: Não foi possível obter informações detalhadas para o ativo {self.ativo}. ({e})")
+    <div class="input-group">
+        <label for="compra">Preço de Compra por Papel (R$)</label>
+        <input type="number" id="compra" value="30.00" step="0.01" required>
+    </div>
 
-    def _obter_input_usuario(self):
-        """Coleta as entradas do usuário."""
-        self.ativo = input("1. Insira o Ticker do Ativo (ex: PETR4.SA, MGLU3.SA): ").upper()
-        self.compra_valor = float(input("2. Preço de COMPRA por papel (R$): "))
-        self.compra_qtd = int(input("3. Quantidade de papéis comprados: "))
-        self.venda_valor = float(input("4. Preço de VENDA por papel (R$): "))
-        
-        print("\n5. Tipo de Operação:")
-        escolha = input("   (Padrão: SWING TRADE) Digite 'D' para DAY TRADE ou pressione ENTER para SWING TRADE: ").upper()
-        if escolha == 'D':
-            self.tipo_operacao = "DAY TRADE"
-        else:
-            self.tipo_operacao = "SWING TRADE"
+    <div class="input-group">
+        <label for="venda">Preço de Venda por Papel (R$)</label>
+        <input type="number" id="venda" value="32.50" step="0.01" required>
+    </div>
+    
+    <div class="input-group">
+        <label for="tipoOperacao">Tipo de Operação</label>
+        <select id="tipoOperacao">
+            <option value="SWING TRADE" selected>SWING TRADE (Alíquota 15%)</option>
+            <option value="DAY TRADE">DAY TRADE (Alíquota 20%)</option>
+        </select>
+    </div>
 
-    def _calcular_metrics(self):
-        """Executa os cálculos financeiros e fiscais."""
-        
-        # 1. Valores Totais
-        valor_total_compra = self.compra_valor * self.compra_qtd
-        valor_total_venda = self.venda_valor * self.compra_qtd
-        
-        # 2. Lucro/Prejuízo Bruto
-        lucro_bruto_auferido = valor_total_venda - valor_total_compra
+    <button onclick="calcularTrade()">Calcular Lucro e IR</button>
 
-        # 3. Impostos (Baseado nas regras fornecidas)
-        
-        # O IRRF ("Dedo-Duro") é sempre retido pela corretora na fonte.
-        # Swing Trade: 0,005% sobre o valor total vendido (conforme especificado pelo usuário)
-        irrf_recolhido_corretora = valor_total_venda * self.irrf_aliquota_swing
-        
-        ir_devido_total = 0.0
-        aliquota_efetiva = 0.0
-        
-        if lucro_bruto_auferido > 0:
-            if self.tipo_operacao == "SWING TRADE":
-                aliquota_efetiva = 0.15 # Alíquota Swing Trade (15% sobre o lucro)
-            elif self.tipo_operacao == "DAY TRADE":
-                aliquota_efetiva = 0.20 # Alíquota Day Trade (20% sobre o lucro)
-            
-            # IR Total devido sobre o lucro
-            ir_devido_total = lucro_bruto_auferido * aliquota_efetiva
-        
-        # IR a ser pago via DARF (Diferença)
-        # Se lucro_bruto_auferido < 0, o IR Devido é zero e o DARF é zero.
-        ir_devido_darf = max(0, ir_devido_total - irrf_recolhido_corretora)
+    <div id="relatorio">
+        <p style="text-align: center;">Preencha os dados e clique em calcular para gerar o relatório.</p>
+    </div>
+</div>
 
-        return {
-            "valor_total_compra": valor_total_compra,
-            "valor_total_venda": valor_total_venda,
-            "lucro_bruto_auferido": lucro_bruto_auferido,
-            "ir_devido_total": ir_devido_total,
-            "irrf_recolhido_corretora": irrf_recolhido_corretora,
-            "ir_devido_darf": ir_devido_darf,
-            "aliquota_efetiva": aliquota_efetiva
+<script>
+    /* JavaScript para a Lógica de Cálculo */
+
+    function formatarMoeda(valor) {
+        return `R$ ${valor.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.')}`;
+    }
+
+    function calcularTrade() {
+        const ativo = document.getElementById('ativo').value.toUpperCase();
+        const qtd = parseFloat(document.getElementById('qtd').value);
+        const compra = parseFloat(document.getElementById('compra').value);
+        const venda = parseFloat(document.getElementById('venda').value);
+        const tipoOperacao = document.getElementById('tipoOperacao').value;
+
+        // Validação básica
+        if (isNaN(qtd) || isNaN(compra) || isNaN(venda) || qtd <= 0) {
+            alert("Por favor, insira valores válidos e positivos para a quantidade e preços.");
+            return;
         }
 
-    def _apresentar_relatorio(self, resultados):
-        """Imprime o relatório final."""
-        
-        lucro_bruto = resultados['lucro_bruto_auferido']
-        
-        # Formatação de Lucro/Prejuízo com cor
-        cor_lucro = Fore.GREEN if lucro_bruto >= 0 else Fore.RED
-        status_lucro = cor_lucro + f"R$ {lucro_bruto:,.2f}" + Style.RESET_ALL
-        
-        print("\n" + "="*50)
-        print(f"💰 RELATÓRIO DE TRADE - {self.tipo_operacao}")
-        print("="*50)
-        
-        print(f"ATIVO NEGOCIADO: {self.ativo}")
-        print(f"QTD. NEGOCIADA: {self.compra_qtd}")
-        print(f"PREÇO MÉDIO COMPRA: R$ {self.compra_valor:,.2f}")
-        print(f"PREÇO MÉDIO VENDA: R$ {self.venda_valor:,.2f}")
-        
-        print("-" * 50)
-        
-        # Seção de Valores e Lucro
-        print(f"VALOR TOTAL DA COMPRA: R$ {resultados['valor_total_compra']:,.2f}")
-        print(f"VALOR TOTAL DA VENDA: R$ {resultados['valor_total_venda']:,.2f}")
-        print(f"LUCRO/PREJUÍZO BRUTO: {status_lucro}")
-        
-        print("-" * 50)
-        
-        # Seção de Impostos
-        print(f"TIPO DE OPERAÇÃO: {self.tipo_operacao}")
-        
-        if lucro_bruto > 0:
-            print(f"ALÍQUOTA DE IR: {int(resultados['aliquota_efetiva'] * 100)}%")
-            print(f"IR DEVIDO TOTAL (Lucro * Alíquota): R$ {resultados['ir_devido_total']:,.2f}")
-            print(f"IRRF RECOLHIDO NA FONTE (0,005% da Venda): R$ {resultados['irrf_recolhido_corretora']:,.2f}")
-            print(f"{Fore.CYAN}IR A PAGAR VIA DARF (Diferença): R$ {resultados['ir_devido_darf']:,.2f}{Style.RESET_ALL}")
-            print(f"    (Atenção: Você deve pagar esta DARF até o último dia útil do mês subsequente.)")
-        else:
-            print(f"Não há IR devido, pois não houve lucro ou houve prejuízo de R$ {abs(lucro_bruto):,.2f}.")
-            print(f"IRRF RECOLHIDO NA FONTE (0,005% da Venda): R$ {resultados['irrf_recolhido_corretora']:,.2f}")
-            print(f"IR A PAGAR VIA DARF (Diferença): R$ 0,00")
-            print("    (O prejuízo pode ser compensado em lucros futuros.)")
-        
-        print("="*50)
+        // --- Variáveis de Cálculo ---
+        const valorTotalCompra = compra * qtd;
+        const valorTotalVenda = venda * qtd;
+        const lucroBruto = valorTotalVenda - valorTotalCompra;
 
-    def rodar(self):
-        """Ponto de entrada da ferramenta."""
-        try:
-            self._obter_input_usuario()
-            
-            # Buscar informações do ativo antes de apresentar o relatório
-            self._obter_dados_empresa() 
-            
-            resultados = self._calcular_metrics()
-            self._apresentar_relatorio(resultados)
-            
-        except ValueError:
-            print(f"{Fore.RED}Erro: Por favor, insira valores numéricos válidos para preço e quantidade.{Style.RESET_ALL}")
-        except Exception as e:
-            print(f"{Fore.RED}Ocorreu um erro inesperado: {e}{Style.RESET_ALL}")
+        // Alíquotas
+        const irrfAliquotaSwing = 0.00005; // 0.005% sobre o valor vendido (Dedo-Duro)
+        let aliquotaIR = 0;
+        let irDevidoTotal = 0;
 
-# --- Execução da Ferramenta ---
-if __name__ == "__main__":
-    app = TradeCalculator()
-    app.rodar()
+        // 1. IRRF Recolhido pela Corretora (Sempre sobre o valor total vendido em Swing Trade, conforme sua regra)
+        const irrfRecolhidoCorretora = valorTotalVenda * irrfAliquotaSwing;
+
+        // 2. Cálculo do IR Devido (Apenas se houver lucro)
+        if (lucroBruto > 0) {
+            aliquotaIR = (tipoOperacao === "DAY TRADE") ? 0.20 : 0.15; // 20% DT, 15% ST
+            irDevidoTotal = lucroBruto * aliquotaIR;
+        }
+
+        // 3. IR a Pagar via DARF (Diferença)
+        const irDevidoDarf = Math.max(0, irDevidoTotal - irrfRecolhidoCorretora);
+        
+        // --- Geração do Relatório HTML ---
+        let relatorioHTML = `
+            <h3 style="color: #495057; text-align: center;">RELATÓRIO DE TRADE (${tipoOperacao})</h3>
+            <div class="result-item">
+                <span class="result-label">ATIVO NEGOCIADO:</span>
+                <span class="result-value">${ativo}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">VALOR TOTAL DA COMPRA:</span>
+                <span class="result-value">${formatarMoeda(valorTotalCompra)}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">VALOR TOTAL DA VENDA:</span>
+                <span class="result-value">${formatarMoeda(valorTotalVenda)}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">LUCRO AUFERIDO / PREJUÍZO:</span>
+                <span class="result-value ${lucroBruto >= 0 ? 'lucro' : 'prejuizo'}">
+                    ${formatarMoeda(lucroBruto)}
+                </span>
+            </div>
+            
+            <div class="header-section">INFORMAÇÕES FISCAIS</div>
+            <div class="result-item">
+                <span class="result-label">ALÍQUOTA DE IR:</span>
+                <span class="result-value">${aliquotaIR * 100}%</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">IR DEVIDO TOTAL (se Lucro):</span>
+                <span class="result-value">${formatarMoeda(irDevidoTotal)}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">IRRF RECOLHIDO NA FONTE (0,005% Venda):</span>
+                <span class="result-value">${formatarMoeda(irrfRecolhidoCorretora)}</span>
+            </div>
+            
+            <div class="header-section">PAGAMENTO VIA DARF</div>
+            <div class="result-item">
+                <span class="result-label">IR A PAGAR VIA DARF:</span>
+                <span class="result-value darf">${formatarMoeda(irDevidoDarf)}</span>
+            </div>
+            <p style="font-size: 0.8em; text-align: center; margin-top: 15px;">
+                ${lucroBruto > 0 
+                    ? 'Lembre-se: O valor da DARF é a diferença entre o IR Total Devido e o IRRF retido.' 
+                    : 'Prejuízos podem ser compensados em lucros futuros.'
+                }
+            </p>
+        `;
+
+        document.getElementById('relatorio').innerHTML = relatorioHTML;
+    }
+</script>
+</body>
+</html>
